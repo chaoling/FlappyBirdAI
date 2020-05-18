@@ -6,10 +6,10 @@ import os
 class Bird:
     IMGS = [pygame.transform.scale2x(pygame.image.load(
         os.path.join("assets", "bird" + str(i) + ".png"))) for i in range(1, 4)]
-    gravity = 1.5
-    anim_duration = 5
-    rot_vel = 20
-    max_rot = 25
+    GRAVITY = 1.5
+    ANIM_DURATION = 5
+    ROT_VEL = 20
+    MAX_ROT = 25
     
     def __init__(self, pos):
         self.x = pos[0]
@@ -31,18 +31,18 @@ class Bird:
     def move(self):
         #time elapses...
         self.tick += 1
-        displacement = max(15, self.vel*self.tick + self.gravity*self.tick**2)
+        displacement = max(15, self.vel*self.tick + self.GRAVITY*self.tick**2)
         self.y += displacement
         if displacement < 0 or self.y < self.height + 50:
-            self.tilt = max(self.max_rot, self.tilt)
+            self.tilt = max(self.MAX_ROT, self.tilt)
         else:
             if self.tilt > -90:
-                self.tilt -= self.rot_vel
+                self.tilt -= self.ROT_VEL
 
     def draw(self, surface):
-        self.img_count = 0 if self.img_count + 1 >= self.anim_duration * 3 else self.img_count + 1
+        self.img_count = 0 if self.img_count + 1 >= self.ANIM_DURATION * 3 else self.img_count + 1
         # don't flap the wing if titled almost 90 deg...
-        self.img = self.IMGS[1] if self.tilt <= -80 else self.IMGS[self.img_count//self.anim_duration]
+        self.img = self.IMGS[1] if self.tilt <= -80 else self.IMGS[self.img_count//self.ANIM_DURATION]
 
         rotated_img = pygame.transform.rotate(self.img, self.tilt)
         new_rect = rotated_img.get_rect(center=self.img.get_rect(topleft = (self.x, self.y)).center)
@@ -50,7 +50,7 @@ class Bird:
 
     # needed for collision detection
     def get_mask(self):
-        return pygame.mask.from_suface(self.img)
+        return pygame.mask.from_surface(self.img)
 
 
 class Pipe:
@@ -67,6 +67,7 @@ class Pipe:
         self.PIPE_BOTTOM = self.PIPE_IMG.convert_alpha()
         self.passed = False #game logic
         self.set_height()
+        self.width = self.PIPE_TOP.get_width()
     
     def set_height(self):
         self.height = random.randrange(50, 450)
@@ -74,7 +75,7 @@ class Pipe:
         self.bottom = self.height + self.GAP
 
     def move(self):
-        self.x -= self.VEL
+            self.x -= self.VEL
 
     def draw(self, surface):
         """
@@ -149,10 +150,12 @@ class Base:
         surface.blit(self.img, (self.x2, self.y))
 
 class App:
+    WIDTH, HEIGHT = 600, 800
     def __init__(self):
         self._running = True
-        self.size = self.width, self.height = 600,800
-        self.num_of_pipes = 3
+        self.size = self.WIDTH, self.HEIGHT
+        self.remove_pipes = []
+        self.score = 0
     
     def on_init(self):
         pygame.init()
@@ -161,21 +164,18 @@ class App:
         self.BG_IMG = pygame.transform.scale(pygame.image.load(
             os.path.join("assets", "bg.png")).convert_alpha(), self.size)
         self.bird = Bird((200,200))
-        self.base = Base(self.width)
-        self.pipes = [Pipe(self.width+i*self.width*1.2/self.num_of_pipes) for i in range(0,self.num_of_pipes+1)]
+        self.base = Base(self.WIDTH)
+        #self.pipes = [Pipe(self.width+i*self.width*1.2/self.num_of_pipes) for i in range(0,self.num_of_pipes+1)]
+        self.pipes = [Pipe(self.WIDTH)]
         self._clock = pygame.time.Clock()
         self._running = True
 
     def draw(self):
         self._display_surf.blit(self.BG_IMG, (0,0))
-        #self.bird.move()
         self.base.draw(self._display_surf)
         self.bird.draw(self._display_surf)
         for pipe in self.pipes:
             pipe.draw(self._display_surf)
-            pipe.move()
-
-        self.base.move()
     
         pygame.display.update()
 
@@ -188,6 +188,30 @@ class App:
                 self.pause()
              
     def on_loop(self):
+        self.base.move()
+        add_pipe = False
+        for pipe in self.pipes:
+            #TODO: check collision
+            pipe.move()
+            if pipe.collide(self.bird):
+                pass
+            if pipe.x + pipe.PIPE_TOP.get_width() < 0:
+                #put the pipe on remove list
+                self.remove_pipes.append(pipe)
+                
+            if not pipe.passed and pipe.x < self.bird.x:
+                pipe.passed = True
+                add_pipe = True
+                self.score += 10
+
+        if add_pipe:
+            self.pipes.append(Pipe(self.WIDTH))
+        #remove the pipe in remove list
+        if self.remove_pipes and self.pipes:
+            for p in self.remove_pipes:
+                self.pipes.remove(p)
+            self.remove_pipes.clear()
+
         self.draw()
         
     def on_render(self):
