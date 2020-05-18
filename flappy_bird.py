@@ -1,12 +1,13 @@
 import pygame
 import random
 import os
+import time
 
 
 class Bird:
     IMGS = [pygame.transform.scale2x(pygame.image.load(
         os.path.join("assets", "bird" + str(i) + ".png"))) for i in range(1, 4)]
-    GRAVITY = 1.5
+    GRAVITY = 2
     ANIM_DURATION = 5
     ROT_VEL = 20
     MAX_ROT = 25
@@ -31,8 +32,9 @@ class Bird:
     def move(self):
         #time elapses...
         self.tick += 1
-        displacement = max(15, self.vel*self.tick + self.GRAVITY*self.tick**2)
+        displacement = min(15, self.vel*self.tick + self.GRAVITY*self.tick**2)
         self.y += displacement
+        print("displacement: "+str(displacement)+ "  pos: "+str(self.y))
         if displacement < 0 or self.y < self.height + 50:
             self.tilt = max(self.MAX_ROT, self.tilt)
         else:
@@ -156,16 +158,19 @@ class App:
         self.size = self.WIDTH, self.HEIGHT
         self.remove_pipes = []
         self.score = 0
+        self.game_over = False
+        self.ground_height = 730
     
     def on_init(self):
         pygame.init()
+        pygame.font.init()
+        self.stat_font = pygame.font.SysFont("comicsans",50)
         pygame.display.set_caption("Flappy Bird")
         self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.BG_IMG = pygame.transform.scale(pygame.image.load(
             os.path.join("assets", "bg.png")).convert_alpha(), self.size)
         self.bird = Bird((200,200))
-        self.base = Base(self.WIDTH)
-        #self.pipes = [Pipe(self.width+i*self.width*1.2/self.num_of_pipes) for i in range(0,self.num_of_pipes+1)]
+        self.base = Base(self.ground_height)
         self.pipes = [Pipe(self.WIDTH)]
         self._clock = pygame.time.Clock()
         self._running = True
@@ -176,28 +181,38 @@ class App:
         self.bird.draw(self._display_surf)
         for pipe in self.pipes:
             pipe.draw(self._display_surf)
-    
+
+        #score
+        score_label = self.stat_font.render("Score: "+str(self.score),1,(255,255,255))
+        self._display_surf.blit(score_label, (10,10))
+        if self.game_over:
+            game_over_label = self.stat_font.render(
+                "GAME OVER! ", 1, (255, 0, 0))
+            self._display_surf.blit(
+                game_over_label, (self.WIDTH//2-game_over_label.get_width()//2, self.HEIGHT//2-game_over_label.get_height()//2))
+            self.game_over = True
+
         pygame.display.update()
 
     def on_event(self, event):
-        self._clock.tick(60)
         if event.type == pygame.QUIT:
             self._running = False
         if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                self.bird.jump()
             if event.key == pygame.K_RETURN:
-                self.pause()
+                print("key_return")
              
     def on_loop(self):
         self.base.move()
         add_pipe = False
         for pipe in self.pipes:
-            #TODO: check collision
             pipe.move()
             if pipe.collide(self.bird):
-                pass
-            if pipe.x + pipe.PIPE_TOP.get_width() < 0:
-                #put the pipe on remove list
-                self.remove_pipes.append(pipe)
+               self.game_over = True
+               if pipe.x + pipe.PIPE_TOP.get_width() < 0:
+                    #put the pipe on remove list
+                    self.remove_pipes.append(pipe)
                 
             if not pipe.passed and pipe.x < self.bird.x:
                 pipe.passed = True
@@ -211,11 +226,16 @@ class App:
             for p in self.remove_pipes:
                 self.pipes.remove(p)
             self.remove_pipes.clear()
+        #check if bird falls on the ground, then game over
+        if self.bird.y + self.bird.img.get_height()*1.4 >= self.ground_height:
+            self.game_over = True
 
+        self.bird.move()
         self.draw()
         
     def on_render(self):
-        pass
+        if self.game_over:
+            self._running = False
 
     def on_cleanup(self):
         pygame.quit()
@@ -231,6 +251,7 @@ class App:
                 self.on_event(event)
             self.on_loop()
             self.on_render()
+        time.sleep(5)
         self.on_cleanup()
 
 if __name__ == "__main__" :
