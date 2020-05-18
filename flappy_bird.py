@@ -152,6 +152,7 @@ class App:
     def __init__(self):
         self._running = True
         self.size = self.width, self.height = 600,800
+        self.num_of_pipes = 3
     
     def on_init(self):
         pygame.init()
@@ -160,8 +161,8 @@ class App:
         self.BG_IMG = pygame.transform.scale(pygame.image.load(
             os.path.join("assets", "bg.png")).convert_alpha(), self.size)
         self.bird = Bird((200,200))
-        self.base = Base(730)
-        self.pipes = [Pipe(700)]
+        self.base = Base(self.width)
+        self.pipes = [Pipe(self.width+i*self.width*1.2/self.num_of_pipes) for i in range(0,self.num_of_pipes+1)]
         self._clock = pygame.time.Clock()
         self._running = True
 
