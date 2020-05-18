@@ -104,6 +104,50 @@ class Pipe:
 
         return True if bottom_overlap or top_overlap else False
 
+
+class Base:
+    """
+    Represnts the moving floor
+    """
+    BASE_IMG = pygame.transform.scale2x(pygame.image.load(
+        os.path.join("assets", "base.png")))
+    VEL = 5
+    WIDTH = BASE_IMG.get_width()
+    
+
+    def __init__(self, y):
+        """
+        Initialize the object
+        :param y: int
+        :return: None
+        """
+        self.y = y
+        self.x1 = 0
+        self.x2 = self.WIDTH #two base floor wrap around the game field horizontally
+        self.img = IMG = self.BASE_IMG.convert_alpha()
+
+    def move(self):
+        """
+        move floor so it looks like its scrolling
+        :return: None
+        """
+        self.x1 -= self.VEL
+        self.x2 -= self.VEL
+        if self.x1 + self.WIDTH < 0:
+            self.x1 = self.x2 + self.WIDTH
+
+        if self.x2 + self.WIDTH < 0:
+            self.x2 = self.x1 + self.WIDTH
+
+    def draw(self, surface):
+        """
+        Draw the floor. Two images move along horizontally and wrap around
+        :param surface: the pygame surface
+        :return: None
+        """
+        surface.blit(self.img, (self.x1, self.y))
+        surface.blit(self.img, (self.x2, self.y))
+
 class App:
     def __init__(self):
         self._running = True
@@ -115,18 +159,23 @@ class App:
         self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.BG_IMG = pygame.transform.scale(pygame.image.load(
             os.path.join("assets", "bg.png")).convert_alpha(), self.size)
-        self.BASE_IMG = pygame.transform.scale2x(pygame.image.load(
-            os.path.join("assets", "base.png")).convert_alpha())
         self.bird = Bird((200,200))
-        self.pipe = Pipe(700)
+        self.base = Base(730)
+        self.pipes = [Pipe(700)]
         self._clock = pygame.time.Clock()
         self._running = True
 
     def draw(self):
         self._display_surf.blit(self.BG_IMG, (0,0))
         #self.bird.move()
+        self.base.draw(self._display_surf)
         self.bird.draw(self._display_surf)
-        self.pipe.draw(self._display_surf)
+        for pipe in self.pipes:
+            pipe.draw(self._display_surf)
+            pipe.move()
+
+        self.base.move()
+    
         pygame.display.update()
 
     def on_event(self, event):
